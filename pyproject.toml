@@ -5,3 +5,35 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.3",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E4",   # import 周りの pycodestyle
+    "E7",   # 文法・構文上の怪しい書き方
+    "E9",   # SyntaxError 等
+    "F",    # Pyflakes
+    "I",    # import の整理
+    "UP",   # 古い Python の書き方を新しくする
+    "B",    # よくあるバグ・危険なコード
+    "SIM",  # 不必要に複雑なコードを簡略化
+    "C4",   # list/dict/set comprehension の改善
+    "RUF",  # Ruff 独自の有用なチェック
+]
+
+ignore = [
+    "E501",  # 行長は formatter に任せる
+    "RUF002", # 日本語 docstring 内の全角記号を許可
+    "RUF003", # 日本語コメントの全角記号を許可
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
