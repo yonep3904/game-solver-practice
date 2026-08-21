@@ -8,13 +8,18 @@ from .types import GameResult, Player
 
 DEFAULT_TURN_LIMIT = 10_000_000  # 無限ループ防止のための上限値
 
-# TODO: 試合のログを記録する機能を追加する（必要になれば）
+
+@dataclass(frozen=True)
+class MatchLog[StateT, ActionT]:
+    initial_state: StateT
+    actions: tuple[ActionT, ...]
 
 
 @dataclass(frozen=True)
-class MatchResult:
-    winner: GameResult
+class MatchResult[StateT, ActionT]:
+    result: GameResult
     count: int
+    log: MatchLog[StateT, ActionT] | None
 
 
 class Match[StateT, ActionT]:
@@ -24,6 +29,7 @@ class Match[StateT, ActionT]:
         first_agent: Agent[StateT, ActionT],
         second_agent: Agent[StateT, ActionT],
         turn_limit: int = DEFAULT_TURN_LIMIT,
+        save_log: bool = True,
     ) -> None:
         if turn_limit <= 0:
             raise ValueError("turn_limit must be positive")
@@ -32,9 +38,12 @@ class Match[StateT, ActionT]:
         self.first_agent = first_agent
         self.second_agent = second_agent
         self.turn_limit = turn_limit
+        self.save_log = save_log
 
         self.state: StateT
         self.count: int
+        self.initial_state: StateT | None
+        self.log: list[ActionT] | None
 
         self.reset()
 
@@ -42,8 +51,45 @@ class Match[StateT, ActionT]:
         """ゲームを初期状態にリセットする。"""
         self.state = self.game_rules.initial_state()
         self.count = 0
+        self.initial_state = self.state if self.save_log else None
+        self.log = [] if self.save_log else None
 
         return self.state
+
+    def is_terminal(self) -> bool:
+        """ゲームが終了しているかどうかを返す。"""
+        return self.game_rules.is_terminal(self.state)
+
+    def current_player(self) -> Player:
+        """現在の状態での手番のプレイヤーを返す。"""
+        if self.is_terminal():
+            raise RuntimeError("Match has already finished")
+
+        return self.game_rules.current_player(self.state)
+
+    def result(self) -> GameResult | None:
+        """勝者または引き分けを返す。ゲームが終了していない場合は None を返す。"""
+        return self.game_rules.result(self.state)
+
+    def match_result(self) -> MatchResult[StateT, ActionT]:
+        """MatchResult を返す。終了していない場合は エラー"""
+        if not self.is_terminal():
+            raise RuntimeError("Match has not finished yet")
+
+        result = self.result()
+
+        if result is None:
+            raise RuntimeError("Match finished but result is None")
+
+        if self.save_log:
+            if self.initial_state is not None and self.log is not None:
+                log = MatchLog(self.initial_state, tuple(self.log))
+            else:
+                raise RuntimeError("Match finished but initial_state is None")
+        else:
+            log = None
+
+        return MatchResult(result=result, count=self.count, log=log)
 
     def play_step(self) -> StateT:
         """ゲームを1ターン進める。"""
@@ -65,31 +111,14 @@ class Match[StateT, ActionT]:
         self.state = self.game_rules.apply_action(self.state, action)
         self.count += 1
 
+        if self.log is not None:
+            self.log.append(action)
+
         return self.state
 
-    def is_terminal(self) -> bool:
-        """ゲームが終了しているかどうかを返す。"""
-        return self.game_rules.is_terminal(self.state)
-
-    def current_player(self) -> Player:
-        """現在の状態での手番のプレイヤーを返す。"""
-        if self.is_terminal():
-            raise RuntimeError("Match has already finished")
-
-        return self.game_rules.current_player(self.state)
-
-    def result(self) -> GameResult | None:
-        """勝者または引き分けを返す。ゲームが終了していない場合は None を返す。"""
-        return self.game_rules.result(self.state)
-
-    def play(self) -> MatchResult:
+    def play(self) -> MatchResult[StateT, ActionT]:
         """ゲームを開始し、終了するまで進める。"""
         while not self.game_rules.is_terminal(self.state):
             self.play_step()
 
-        result = self.game_rules.result(self.state)
-
-        if result is None:
-            raise RuntimeError("Match finished but result is None")
-
-        return MatchResult(winner=result, count=self.count)
+        return self.match_result()

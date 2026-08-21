@@ -40,7 +40,7 @@ class ConnectFourGameRules(GameRules[ConnectFourState, ConnectFourAction]):
 
         return ConnectFourState(
             board=tuple(board),
-            current_player=state.current_player.opponent(),
+            current_player=state.current_player.opponent,
         )
 
     def is_terminal(self, state: ConnectFourState) -> bool:

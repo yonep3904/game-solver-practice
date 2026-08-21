@@ -49,7 +49,7 @@ class TicTacToeGameRules(GameRules[TicTacToeState, TicTacToeAction]):
 
         return TicTacToeState(
             board=tuple(board),
-            current_player=state.current_player.opponent(),
+            current_player=state.current_player.opponent,
         )
 
     def is_terminal(
