@@ -9,7 +9,7 @@ from game_solver.games.tic_tac_toe import (
 
 
 class TicTacToeRandomAgent(TicTacToeAgent):
-    def __init__(self, seed: int | None = None):
+    def __init__(self, seed: int | None = None) -> None:
         self._rules = TicTacToeGameRules()
         self._rg = random.Random(seed)
 
