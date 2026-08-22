@@ -1,0 +1,18 @@
+{
+    "editor.formatOnSave": true,
+    // C/C++ formatter settings: clang-format
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "clangd.arguments": [
+        "--background-index",
+        "--clang-tidy",
+        "--query-driver=/usr/bin/g++"
+    ],
+    // Python formatter settings: ruff
+    "[python]": {
+    }
+}
