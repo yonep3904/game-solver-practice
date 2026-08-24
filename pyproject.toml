@@ -17,6 +17,18 @@ dev = [
     "ruff>=0.16.3",
 ]
 
+[build-system]
+requires = [
+    "scikit-build-core>=1.0.3",
+    "pybind11>=3.1.0",
+]
+
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages = ["src/game_solver"]
+
 [tool.ruff]
 line-length = 88
 
