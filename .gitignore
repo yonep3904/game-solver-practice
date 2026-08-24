@@ -213,3 +213,8 @@ pyrightconfig.json
 *.app
 
 # End of https://www.toptal.com/developers/gitignore/api/C++
+
+
+### Custom ###
+# vscode settings
+/.vscode/settings.json
