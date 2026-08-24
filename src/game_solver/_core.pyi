@@ -1,0 +1,23 @@
+"""
+C++ acceleration for game_solver
+"""
+from __future__ import annotations
+import collections.abc
+import typing
+__all__: list[str] = list()
+class _SampleCounter:
+    def __init__(self, initial_value: typing.SupportsInt | typing.SupportsIndex = 0) -> None:
+        ...
+    def add(self, value: typing.SupportsInt | typing.SupportsIndex) -> None:
+        ...
+    def increment(self) -> None:
+        ...
+    def message(self) -> str:
+        ...
+    @property
+    def value(self) -> int:
+        ...
+def _sample_add(a: typing.SupportsInt | typing.SupportsIndex, b: typing.SupportsInt | typing.SupportsIndex) -> int:
+    ...
+def _sample_double_values(values: collections.abc.Sequence[typing.SupportsInt | typing.SupportsIndex]) -> list[int]:
+    ...

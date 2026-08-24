@@ -31,6 +31,9 @@ wheel.packages = ["src/game_solver"]
 
 [tool.ruff]
 line-length = 88
+extend-exclude = [
+    "src/game_solver/_core.pyi",
+]
 
 [tool.ruff.lint]
 select = [
