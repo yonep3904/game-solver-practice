@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from game_solver.core.types import GameResult, Player
 from game_solver.games.tic_tac_toe import TicTacToeAction, TicTacToeState
 from game_solver.games.tic_tac_toe.constants import CELL_COUNT
+from game_solver.games.tic_tac_toe.state import Cell
 
 BOARD_MASK = 0b111111111  # 下位9bit
 WIN_MASKS = [
@@ -21,11 +22,20 @@ WIN_MASKS = [
 
 @dataclass(frozen=True, slots=True)
 class TicTacToeEngineState:
-    """Tic Tac Toe の状態を表すクラス。"""
-
     first: int
     second: int
-    player: bool  # True: first, False: second
+    player_flg: bool  # True: 1st, False: 2nd
+
+    @property
+    def occupied(self) -> int:
+        return self.first | self.second
+
+    @property
+    def player(self) -> Player:
+        return Player.FIRST if self.player_flg else Player.SECOND
+
+    def stones(self, player_flg: bool) -> int:
+        return self.first if player_flg else self.second
 
 
 type TicTacToeEngineAction = int
@@ -34,25 +44,26 @@ type TicTacToeEngineAction = int
 class TicTacToeEngine:
     @staticmethod
     def initial_state() -> TicTacToeEngineState:
-        return TicTacToeEngineState(first=0, second=0, player=True)
+        return TicTacToeEngineState(first=0, second=0, player_flg=True)
 
     @staticmethod
     def legal_actions(state: TicTacToeEngineState) -> list[TicTacToeEngineAction]:
-        occupied = state.first | state.second
+        occupied = state.occupied
         return [i for i in range(CELL_COUNT) if not (occupied & (1 << i))]
 
     @staticmethod
     def apply_action(
         state: TicTacToeEngineState, action: TicTacToeEngineAction
     ) -> TicTacToeEngineState:
-        if state.player:
+        if state.player_flg:
             new_first = state.first | (1 << action)
             new_second = state.second
         else:
             new_first = state.first
             new_second = state.second | (1 << action)
+
         return TicTacToeEngineState(
-            first=new_first, second=new_second, player=not state.player
+            first=new_first, second=new_second, player_flg=not state.player_flg
         )
 
     @staticmethod
@@ -61,7 +72,7 @@ class TicTacToeEngine:
 
     @staticmethod
     def current_player(state: TicTacToeEngineState) -> Player:
-        return Player.FIRST if state.player else Player.SECOND
+        return state.player
 
     @staticmethod
     def result(state: TicTacToeEngineState) -> GameResult | None:
@@ -70,7 +81,7 @@ class TicTacToeEngine:
                 return GameResult.FIRST
             if (state.second & mask) == mask:
                 return GameResult.SECOND
-        if (state.first | state.second) == BOARD_MASK:
+        if state.occupied == BOARD_MASK:
             return GameResult.DRAW
 
         return None  # game continues
@@ -80,18 +91,18 @@ class TicTacToeEngine:
         first = second = 0
 
         for i in range(CELL_COUNT):
-            if state.board[i] == Player.FIRST:
+            if state.board[i] is Player.FIRST:
                 first |= 1 << i
-            elif state.board[i] == Player.SECOND:
+            elif state.board[i] is Player.SECOND:
                 second |= 1 << i
 
         return TicTacToeEngineState(
-            first=first, second=second, player=state.current_player == Player.FIRST
+            first=first, second=second, player_flg=state.current_player == Player.FIRST
         )
 
     @staticmethod
     def to_state(engine_state: TicTacToeEngineState) -> TicTacToeState:
-        board: list[Player | None] = [None] * CELL_COUNT
+        board: list[Cell] = [None] * CELL_COUNT
 
         for i in range(CELL_COUNT):
             if engine_state.first & (1 << i):
@@ -99,9 +110,7 @@ class TicTacToeEngine:
             elif engine_state.second & (1 << i):
                 board[i] = Player.SECOND
 
-        current_player = Player.FIRST if engine_state.player else Player.SECOND
-
-        return TicTacToeState(board=tuple(board), current_player=current_player)
+        return TicTacToeState(board=tuple(board), current_player=engine_state.player)
 
     @staticmethod
     def from_action(action: TicTacToeAction) -> TicTacToeEngineAction:
