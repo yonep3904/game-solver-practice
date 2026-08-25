@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from game_solver.core import Player
 
-from .constants import BOARD_HEIGHT, BOARD_WIDTH, CELL_COUNT
+from .constants import CELL_COUNT
 
 type Cell = Player | None
 
@@ -13,6 +13,21 @@ SYMBOLS: dict[Cell, str] = {
     Player.SECOND: "X",
     None: ".",
 }
+
+BOARD_TEXT = """\
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+ {} | {} | {} | {} | {} | {} | {}
+---------------------------
+"""
 
 
 @dataclass(frozen=True)
@@ -27,10 +42,6 @@ class ConnectFourState:
             raise ValueError(f"board must contain exactly {CELL_COUNT} cells")
 
     def __str__(self) -> str:
-        return "\n".join(
-            "".join(
-                SYMBOLS[self.board[row * BOARD_WIDTH + column]]
-                for column in range(BOARD_WIDTH)
-            )
-            for row in range(BOARD_HEIGHT)
+        return f"Next player: {SYMBOLS[self.current_player]}\n" + BOARD_TEXT.format(
+            *[SYMBOLS[cell] for cell in self.board]
         )
