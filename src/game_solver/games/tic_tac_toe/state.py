@@ -34,4 +34,6 @@ class TicTacToeState:
             raise ValueError(f"board must contain exactly {CELL_COUNT} cells")
 
     def __str__(self) -> str:
-        return BOARD_TEXT.format(*[SYMBOLS[cell] for cell in self.board])
+        return f"Next player: {SYMBOLS[self.current_player]}\n" + BOARD_TEXT.format(
+            *[SYMBOLS[cell] for cell in self.board]
+        )
