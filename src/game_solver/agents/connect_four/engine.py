@@ -11,8 +11,12 @@ from game_solver.games.connect_four.constants import (
 )
 from game_solver.games.connect_four.state import Cell
 
-# Each column occupies seven bits: six playable cells and one sentinel bit.
-# This makes four-in-a-row checks a handful of integer operations.
+# Each column occupies seven bits:
+#
+#   6 playable cells + 1 sentinel bit
+#
+# This layout allows four-in-a-row checks using only shifts
+# and bitwise operations.
 STRIDE = BOARD_HEIGHT + 1
 BOTTOM_MASKS = tuple(1 << (column * STRIDE) for column in range(BOARD_WIDTH))
 TOP_MASKS = tuple(
@@ -26,29 +30,43 @@ FULL_MASK = sum(COLUMN_MASKS)
 
 @dataclass(frozen=True, slots=True)
 class ConnectFourEngineState:
-    first: int
-    second: int
+    # ゲームエンジンで現在の手番プレイヤーの情報を提供するために player_flg を含めている
+    # 実際の探索では不要なため削除も検討
+
+    position: int
+    mask: int
     player_flg: bool  # True: 1st, False: 2nd
 
     @property
-    def occupied(self) -> int:
-        return self.first | self.second
+    def opponent(self) -> int:
+        return self.mask ^ self.position
+
+    @property
+    def first(self) -> int:
+        return self.position if self.player_flg else self.opponent
+
+    @property
+    def second(self) -> int:
+        return self.opponent if self.player_flg else self.position
 
     @property
     def player(self) -> Player:
         return Player.FIRST if self.player_flg else Player.SECOND
-
-    def stones(self, player_flg: bool) -> int:
-        return self.first if player_flg else self.second
 
 
 type ConnectFourEngineAction = int
 
 
 class ConnectFourEngine:
+    """Connect Four の高速ゲームエンジン。"""
+
     @staticmethod
     def initial_state() -> ConnectFourEngineState:
-        return ConnectFourEngineState(first=0, second=0, player_flg=True)
+        return ConnectFourEngineState(
+            position=0,
+            mask=0,
+            player_flg=True,
+        )
 
     @staticmethod
     def legal_actions(
@@ -57,14 +75,16 @@ class ConnectFourEngine:
         if ConnectFourEngine.terminate_value(state) is not None:
             return []
 
-        occupied = state.occupied
+        occupied = state.mask
+
         return [
             column for column in range(BOARD_WIDTH) if not occupied & TOP_MASKS[column]
         ]
 
     @staticmethod
     def apply_action(
-        state: ConnectFourEngineState, action: ConnectFourEngineAction
+        state: ConnectFourEngineState,
+        action: ConnectFourEngineAction,
     ) -> ConnectFourEngineState:
         if not 0 <= action < BOARD_WIDTH:
             raise ValueError(f"action must be between 0 and {BOARD_WIDTH - 1}")
@@ -72,46 +92,60 @@ class ConnectFourEngine:
         if ConnectFourEngine.terminate_value(state) is not None:
             raise ValueError("cannot play from a terminal position")
 
-        occupied = state.occupied
-        if occupied & TOP_MASKS[action]:
+        if state.mask & TOP_MASKS[action]:
             raise ValueError(f"column {action} is full")
 
-        move = (occupied + BOTTOM_MASKS[action]) & COLUMN_MASKS[action]
-        if state.player_flg:
-            new_first = state.first | move
-            new_second = state.second
-        else:
-            new_first = state.first
-            new_second = state.second | move
+        return ConnectFourEngine.apply_action_unchecked(state, action)
+
+    @staticmethod
+    def apply_action_unchecked(
+        state: ConnectFourEngineState,
+        action: ConnectFourEngineAction,
+    ) -> ConnectFourEngineState:
+        """
+        action が合法であることを呼び出し側が保証する高速版。
+        """
+
+        move = (state.mask + BOTTOM_MASKS[action]) & COLUMN_MASKS[action]
 
         return ConnectFourEngineState(
-            first=new_first,
-            second=new_second,
+            position=state.position ^ state.mask,
+            mask=state.mask | move,
             player_flg=not state.player_flg,
         )
 
     @staticmethod
-    def is_terminal(state: ConnectFourEngineState) -> bool:
-        return ConnectFourEngine.result(state) is not None
+    def is_terminal(
+        state: ConnectFourEngineState,
+    ) -> bool:
+        return ConnectFourEngine.terminate_value(state) is not None
 
     @staticmethod
-    def current_player(state: ConnectFourEngineState) -> Player:
+    def current_player(
+        state: ConnectFourEngineState,
+    ) -> Player:
         return state.player
 
     @staticmethod
-    def result(state: ConnectFourEngineState) -> GameResult | None:
+    def result(
+        state: ConnectFourEngineState,
+    ) -> GameResult | None:
+
         if ConnectFourEngine.has_won(state.first):
             return GameResult.FIRST
         elif ConnectFourEngine.has_won(state.second):
             return GameResult.SECOND
-        elif state.occupied == FULL_MASK:
+        elif state.mask == FULL_MASK:
             return GameResult.DRAW
         else:
             return None
 
     @staticmethod
-    def from_state(state: ConnectFourState) -> ConnectFourEngineState:
-        first = second = 0
+    def from_state(
+        state: ConnectFourState,
+    ) -> ConnectFourEngineState:
+        first = 0
+        second = 0
 
         for row in range(BOARD_HEIGHT):
             for column in range(BOARD_WIDTH):
@@ -123,53 +157,101 @@ class ConnectFourEngine:
                 elif player is Player.SECOND:
                     second |= bit
 
+        mask = first | second
+
+        if state.current_player is Player.FIRST:
+            position = first
+            player_flg = True
+        else:
+            position = second
+            player_flg = False
+
         return ConnectFourEngineState(
-            first, second, state.current_player == Player.FIRST
+            position=position,
+            mask=mask,
+            player_flg=player_flg,
         )
 
     @staticmethod
-    def to_state(engine_state: ConnectFourEngineState) -> ConnectFourState:
+    def to_state(
+        engine_state: ConnectFourEngineState,
+    ) -> ConnectFourState:
         board: list[Cell] = [None] * CELL_COUNT
+
+        first = engine_state.first
+        second = engine_state.second
 
         for row in range(BOARD_HEIGHT):
             for column in range(BOARD_WIDTH):
                 bit = 1 << (column * STRIDE + BOARD_HEIGHT - 1 - row)
-                if engine_state.first & bit:
-                    board[row * BOARD_WIDTH + column] = Player.FIRST
-                elif engine_state.second & bit:
-                    board[row * BOARD_WIDTH + column] = Player.SECOND
 
-        return ConnectFourState(board=tuple(board), current_player=engine_state.player)
+                index = row * BOARD_WIDTH + column
+
+                if first & bit:
+                    board[index] = Player.FIRST
+                elif second & bit:
+                    board[index] = Player.SECOND
+
+        return ConnectFourState(
+            board=tuple(board),
+            current_player=engine_state.player,
+        )
 
     @staticmethod
-    def from_action(action: ConnectFourAction) -> ConnectFourEngineAction:
+    def from_action(
+        action: ConnectFourAction,
+    ) -> ConnectFourEngineAction:
         return action.column
 
     @staticmethod
-    def to_action(engine_action: ConnectFourEngineAction) -> ConnectFourAction:
+    def to_action(
+        engine_action: ConnectFourEngineAction,
+    ) -> ConnectFourAction:
         return ConnectFourAction(column=engine_action)
 
     @staticmethod
-    def terminate_value(state: ConnectFourEngineState) -> float | None:
-        """手番プレイヤーからみた評価値を返す"""
+    def terminate_value(
+        state: ConnectFourEngineState,
+    ) -> float | None:
+        """
+        手番プレイヤーから見た評価値を返す。
+        """
 
-        # if ConnectFourEngine.has_won(state.stones(state.player_flg)):
+        # if ConnectFourEngine.has_won(state.position):
         #     return +1.0 # 呼び出す状況を考えると到達しない
-        if ConnectFourEngine.has_won(state.stones(not state.player_flg)):
+        if ConnectFourEngine.has_won(state.opponent):
             return -1.0
-        elif state.occupied == FULL_MASK:
+        if state.mask == FULL_MASK:
             return 0.0
-        else:
-            return None
+
+        return None
 
     @staticmethod
     def has_won(bits: int) -> bool:
-        "first/second のどちらかを入力に、勝利しているかを判定する低レベル関数。"
+        """
+        指定された bitboard に4連結があるか判定する。
+        """
 
-        # 各方向に対して4連結の判定を行う
-        for shift in (1, STRIDE, STRIDE - 1, STRIDE + 1):
-            # 2連結 + 2連結 = 4連結
-            pair = bits & (bits >> shift)
-            if pair & (pair >> (2 * shift)):
-                return True
+        # Vertical
+        pair = bits & (bits >> 1)
+        if pair & (pair >> 2):
+            return True
+
+        # Horizontal
+        pair = bits & (bits >> STRIDE)
+        if pair & (pair >> (2 * STRIDE)):
+            return True
+
+        # Diagonal /
+        shift = STRIDE - 1
+        pair = bits & (bits >> shift)
+        if pair & (pair >> (2 * shift)):
+            return True
+
+        # Diagonal \
+        shift = STRIDE + 1
+        pair = bits & (bits >> shift)
+        if pair & (pair >> (2 * shift)):  # noqa: SIM103
+            return True
+
         return False
