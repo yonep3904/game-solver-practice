@@ -4,7 +4,7 @@ C++ acceleration for game_solver
 from __future__ import annotations
 import collections.abc
 import typing
-__all__: list[str] = list()
+__all__: list[str] = ['connect_four_mcts_cpp']
 class _SampleCounter:
     def __init__(self, initial_value: typing.SupportsInt | typing.SupportsIndex = 0) -> None:
         ...
@@ -20,4 +20,6 @@ class _SampleCounter:
 def _sample_add(a: typing.SupportsInt | typing.SupportsIndex, b: typing.SupportsInt | typing.SupportsIndex) -> int:
     ...
 def _sample_double_values(values: collections.abc.Sequence[typing.SupportsInt | typing.SupportsIndex]) -> list[int]:
+    ...
+def connect_four_mcts_cpp(position: typing.SupportsInt | typing.SupportsIndex, mask: typing.SupportsInt | typing.SupportsIndex, simulations: typing.SupportsInt | typing.SupportsIndex, exploration_weight: typing.SupportsFloat | typing.SupportsIndex, seed: typing.SupportsInt | typing.SupportsIndex) -> int:
     ...

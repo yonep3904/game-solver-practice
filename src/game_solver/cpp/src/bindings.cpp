@@ -1,6 +1,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <cstddef>
+#include <cstdint>
+
+#include "connect_four/mcts.hpp"
 #include "sample.hpp"
 
 namespace py = pybind11;
@@ -21,4 +25,12 @@ PYBIND11_MODULE(_core, m) {
         .def("message", &sample::Counter::message);
 
     // Game solver
+    m.def(
+        "connect_four_mcts_cpp",
+        [](std::uint64_t position, std::uint64_t mask, std::size_t simulations,
+           double exploration_weight, std::uint64_t seed) {
+            return connect_four::mcts({position, mask}, simulations, exploration_weight, seed);
+        },
+        py::arg("position"), py::arg("mask"), py::arg("simulations"), py::arg("exploration_weight"),
+        py::arg("seed"), py::call_guard<py::gil_scoped_release>());
 }
