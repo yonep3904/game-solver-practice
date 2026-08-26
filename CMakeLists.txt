@@ -15,6 +15,7 @@ add_library(
     STATIC
     # ソースコードのパスはここに追加
     src/game_solver/cpp/src/sample.cpp
+    src/game_solver/cpp/src/connect_four/engine.cpp
 )
 
 target_compile_features(
