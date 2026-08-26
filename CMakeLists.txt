@@ -16,6 +16,7 @@ add_library(
     # ソースコードのパスはここに追加
     src/game_solver/cpp/src/sample.cpp
     src/game_solver/cpp/src/connect_four/engine.cpp
+    src/game_solver/cpp/src/connect_four/mcts.cpp
 )
 
 target_compile_features(
