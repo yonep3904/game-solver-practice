@@ -50,21 +50,24 @@ consteval auto make_column_masks() {
     return result;
 }
 
+consteval auto make_full_mask() {
+    Bitboard result = 0;
+
+    constexpr auto column_masks = detail::make_column_masks();
+
+    for (const Bitboard mask : column_masks) {
+        result |= mask;
+    }
+
+    return result;
+}
+
 }  // namespace detail
 
 inline constexpr auto BOTTOM_MASKS = detail::make_bottom_masks();
 inline constexpr auto TOP_MASKS = detail::make_top_masks();
 inline constexpr auto COLUMN_MASKS = detail::make_column_masks();
-
-inline constexpr Bitboard FULL_MASK = [] consteval {
-    Bitboard result = 0;
-
-    for (const Bitboard mask : COLUMN_MASKS) {
-        result |= mask;
-    }
-
-    return result;
-}();
+inline constexpr auto FULL_MASK = detail::make_full_mask();
 
 struct EngineState {
     // Stones belonging to the player whose turn it is.
